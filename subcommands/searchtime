@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# search by time
+# accept 2 arguments: timestamp and tolerance
+# searches for any rows with timestamps near that tolerance
+
+# exit early if you try to run this where you shouldn't
+if [ "$timestamps" -ne 1 ]; then
+  echo "timestamps are not enabled in this database, so searching by timestamps is sadly impossible." > /dev/stderr
+  exit 1
+fi
+
+export inputtime="$1"
+export inputtolerance="$2"
+
+# exit early if arguments are missing
+if [ -z "$inputtime" ]; then
+  echo "missing argument" >/dev/stderr
+  exit 1
+fi
+if [ -z "$inputtolerance" ]; then
+  echo "missing argument" >/dev/stderr
+  exit 1
+fi
+
+"$fsdb_prog" print | awk '
+function abs(v) {return v < 0 ? -v : v}
+BEGIN {
+  inputtime=ENVIRON["inputtime"]
+  inputtolerance=ENVIRON["inputtolerance"]
+  print "searching", inputtime, inputtolerance
+}
+abs($1 - inputtime) < inputtolerance { print }
+'

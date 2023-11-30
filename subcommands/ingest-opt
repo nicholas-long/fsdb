@@ -1,0 +1,50 @@
+#!/usr/bin/awk -f
+
+# environ var fsdb_prog holds original arg var $0, the main program
+BEGIN {
+  ARGC = 0 # clean out environ var for this
+  timestamps = ENVIRON["timestamps"]
+  if (timestamps) OFS = "\t" # use tab char to separate timestamp from line
+  compress_line_limit = 1000 # constant value
+  for(n=0;n<256;n++) ord[sprintf("%c",n)]=n # prepare char code lookup table
+  partcount = ENVIRON["partitions"]
+  print "using", partcount, "partitions"
+  hasingesthook = (system("test -e hooks/ingest") == 0)
+  # populate initial counts of parition file lines
+  # don't do this for optimized version?
+}
+{
+  # optimized partition id calculated by C program before this in stream
+  part = $1
+  gsub(/^[^\t]+\t/, "") # remove leading part before tab: computed partition id
+
+  partfn = "data/" part # generate filename
+  if (timestamps) { # print timestamps before lines if enabled
+    print systime(), $0 >> partfn
+  } else {
+    print >> partfn
+  }
+  # maintain mru most recent use collection for file handles
+  mru[partfn] = NR
+  if (++lines_written[part] > compress_line_limit) {
+    close(partfn)
+    delete mru[partfn]
+    # call compress subcommand here
+    #print "compressing", part, "total read", NR
+    # printing too much will slow it way down
+    compresscommand = ENVIRON["fsdb_prog"] " compress " part
+    system(compresscommand)
+    lines_written[part] = 0
+  }
+  # clean up stuff from MRU if it is too big
+  if (length(mru) > 64) {
+    oldest = 0
+    for (p in mru) if (mru[p] < oldest) oldest = mru[p]
+    for (p in mru) if (mru[p] == oldest) {
+      close(p)
+      delete mru[p]
+    }
+  }
+  # TODO: print to ingest hook if it exists: var hasingesthook
+}
+# NR % 1000000 == 0 { print "total records", NR }

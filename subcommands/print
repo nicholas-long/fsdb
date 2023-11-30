@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# print all the data in the data directory
+export LC_LOCALE=C # ensure sort ordering is consistent
+
+# quick and dirty
+# for good ordering, loop over partitions
+find data -type f | sort | while read partfile; do
+  if [[ "$partfile" =~ .gz$ ]]; then
+    zcat "$partfile"
+  else
+    cat "$partfile"
+  fi
+done

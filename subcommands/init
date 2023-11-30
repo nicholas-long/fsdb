@@ -1,0 +1,52 @@
+#!/bin/bash
+
+#- data - data directory
+#  - files for each partition: newest additions file and the gzipped version
+#- hooks directory
+#- .dbconfig - file to source for database settings
+
+timestamps=0
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -p|--partitions) # number of partitions
+      shift # pop arg
+      partitions="$1"
+      ;;
+    -t|--timestamps) # include timestamps in database
+      timestamps=1
+      ;;
+    *)
+      echo "what is $1?"
+      ;;
+  esac
+  shift
+done
+
+if [[ "$partitions" =~ [0-9]+ ]]; then
+  echo "$partitions partitions ok"
+else
+  echo "partitions must be provided as a number"
+  exit 1
+fi
+
+# check if the directories or files already exist. exit if so.
+if [ -f .fsdbconfig ]; then
+  echo ".dbconfig already exists. cannot initialize here."
+  exit 1
+fi
+if [ -d data ]; then
+  echo "data directory already exists. cannot initialize here."
+  exit 1
+fi
+if [ -d hooks ]; then
+  echo "hooks directory already exists. cannot initialize here."
+  exit 1
+fi
+
+# initialize
+mkdir hooks
+mkdir data
+echo "partitions=$partitions" > .fsdbconfig
+echo "timestamps=$timestamps" >> .fsdbconfig
+

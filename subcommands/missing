@@ -1,0 +1,40 @@
+#!/usr/bin/awk -f
+
+#partitions env variable holds the number of partitions of this database
+
+# TODO: search hook
+BEGIN {
+  timestamps = ENVIRON["timestamps"]
+  compress_line_limit = 100 # constant value
+  for(n=0;n<256;n++) ord[sprintf("%c",n)]=n # prepare char code lookup table
+  partcount = ENVIRON["partitions"]
+  #print "using", partcount, "partitions" > "/dev/stderr"
+  #hasingesthook = (system("test -e hooks/ingest") == 0)
+}
+# parse each input line as an ID to read
+{
+  hashcode = 0
+  for (n = 1; n <= length($1); n++) hashcode += n * ord[substr($1,n,1)]
+  part = hashcode % partcount
+  # record partitions and IDs needed
+  partusing[part] = 1
+  ids[$1] = 1
+}
+END {
+  for (p in partusing) {
+    #print "scanning partition", p > "/dev/stderr"
+    datafile = "data/" p
+    cmd = "zcat data/" p ".gz"
+    while ((cmd | getline) > 0) {
+      if (timestamps) id = $2
+      else id = $1
+      if (id in ids) delete ids[id]
+    }
+    while ((getline < datafile) > 0) { # read in file
+      if (timestamps) id = $2
+      else id = $1
+      if (id in ids) delete ids[id]
+    }
+  }
+  for (id in ids) print id
+}

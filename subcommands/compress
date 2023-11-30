@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# compress subcommand - compress text files and append to gzip streams together. called by ingest when a partition gets too large
+# input: partition number to compress as arg 1
+
+part="$1"
+if [ -z "$part" ]; then
+  exit 1
+fi
+
+datafile="data/$part"
+tempfile="data/$part.tmp"
+gzipfile="data/$part.gz"
+mv "$datafile" "$tempfile"
+gzip -c "$tempfile" >> "$gzipfile"
+rm "$tempfile"

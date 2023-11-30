@@ -1,0 +1,35 @@
+#!/bin/bash
+
+export delid="$1"
+if [ -z "$delid" ]; then
+  echo "ID to delete is required as first argument" > /dev/stderr
+  exit 1
+fi
+
+# if there's timestamps then check column 2
+
+# get partition ID
+part=$(awk '
+  BEGIN {
+    for(n=0;n<256;n++) ord[sprintf("%c",n)]=n # prepare char code lookup table
+    id = ENVIRON["delid"]
+    partcount = ENVIRON["partitions"]
+    hashcode = 0
+    for (n = 1; n <= length(id); n++) hashcode += n * ord[substr(id,n,1)]
+    part = hashcode % partcount
+    print part
+  }
+')
+
+echo "deleting $delid from partition $part" > /dev/stderr
+
+# print stream and skip row
+tf=$(mktemp)
+(zcat "data/$part.gz" 2>/dev/null && cat "data/$part" 2>/dev/null) | awk -v "id=$delid" '
+$1 == id { next }
+{ print }
+' | gzip > "$tf.gz"
+
+# ovewrite old files
+mv "$tf.gz" "data/$part.gz" && rm "data/$part"
+

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+# creating this to wrap around the ingest process and use the optimized hashcode generator
+# environ var fsdb_prog holds original arg var $0, the main program
+# hashcode subcommand is called hashcode-optimized
+
+# get number of processors
+export splitcount=$(cat /proc/cpuinfo | grep processor | wc -l)
+"$fsdb_prog" hashcode-optimized | awk '
+BEGIN {
+  splits = ENVIRON["splitcount"]
+  prog = ENVIRON["fsdb_prog"]
+  subproc = prog " ingest-opt " # add argument after here
+}
+{
+  target = $1 % splits
+  print | (subproc target)
+}
+#NR % 1000000 == 0 { print "progress", NR > "/dev/stderr" }
+'

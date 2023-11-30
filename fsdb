@@ -1,0 +1,42 @@
+#!/bin/bash
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+# if it's a symlink then we have to follow it to find subcommands
+if [ -L "$0" ]; then
+  realdir=$(dirname $(realpath "$0") )
+  subcommand_dir="$realdir/subcommands"
+else
+  subcommand_dir="$SCRIPT_DIR/subcommands"
+fi
+
+export fsdb_prog="$0"
+
+subcommand="$1"
+shift
+if [ -z "$subcommand" ]; then
+  subcommand="--help"
+elif [[ "$subcommand" == "-h" ]]; then
+  subcommand="--help"
+fi
+
+# get config settings
+if [ -f .fsdbconfig ]; then
+  source .fsdbconfig
+  export partitions
+  export timestamps
+else
+  if [[ "$subcommand" == "init" ]]; then
+    echo "initializing config"
+  else
+    echo "where is my config file .fsdbconfig ?" > /dev/stderr
+  fi
+fi
+
+if [[ "$subcommand" == "--help" ]]; then
+  echo "Usage: $0 [ subcommand ] ..."
+  echo "Subcommand Options:"
+  ls "$subcommand_dir"
+  exit 1
+else
+  "$subcommand_dir/$subcommand" "$@"
+fi

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+tf=$(mktemp)
+for part in $(seq 0 $((partitions - 1)) ); do
+  (zcat "data/$part.gz" 2>/dev/null && cat "data/$part" 2>/dev/null) | \
+    awk '
+      last != $0 {print}
+      {last = $0}
+    ' | gzip > "$tf.gz"
+  echo "done with $part : $(zcat $tf.gz | wc -l)"
+  rm "data/$part"
+  mv "$tf.gz" "data/$part.gz"
+done
+rm "$tf"
+rm "$tf.gz"
